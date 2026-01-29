@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+
+  role      Role     @default(CUSTOMER)
+  isActive  Boolean  @default(true)
+
+  // relations
+  medicines Medicine[]   // seller
+  orders    Order[]      // customer
+  reviews   Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+model Category {
+  id        String     @id @default(uuid())
+  name      String     @unique
+
+  medicines Medicine[]
+
+  createdAt DateTime @default(now())
+}
+
+model Medicine {
+  id           String        @id @default(uuid())
+  name         String
+  price        Float
+  stock        Int
+  description  String
+  manufacturer String
+
+  status       MedicineStatus @default(ACTIVE)
+
+  // relations
+  sellerId     String
+  seller       User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id])
+
+  reviews      Review[]
+  orderItem  OrderItem []
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+enum MedicineStatus {
+  ACTIVE
+  OUT_OF_STOCK
+  DISABLED
+}
+
+
+model Order {
+  id          String       @id @default(uuid())
+
+  customerId  String
+  customer    User         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  status      OrderStatus  @default(PLACED)
+
+  total       Float
+  address     String
+
+  items       OrderItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+
+model OrderItem {
+  id         String   @id @default(uuid())
+
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+
+  quantity   Int
+  price      Float
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Review {
+  id         String   @id @default(uuid())
+
+  rating     Int
+  comment    String?
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+}
+
+
+
+
+
+
