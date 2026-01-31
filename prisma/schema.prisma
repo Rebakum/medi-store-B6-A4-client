@@ -1,4 +1,4 @@
-// This is your Prisma schema file,
+// Prisma schema
 
 generator client {
   provider = "prisma-client-js"
@@ -7,6 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
 model User {
   id        String   @id @default(uuid())
   name      String?
@@ -17,14 +18,13 @@ model User {
   isActive  Boolean  @default(true)
 
   // relations
-  medicines Medicine[]   // seller
-  orders    Order[]      // customer
-  reviews   Review[]
-
+  medicines  Medicine[]  
+  orders     Order[]     
+  reviews    Review[]
+  orderItems OrderItem[] 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 }
 
 enum Role {
@@ -32,21 +32,23 @@ enum Role {
   SELLER
   ADMIN
 }
-model Category {
-  id        String     @id @default(uuid())
-  name      String     @unique
 
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+
+  isActive  Boolean  @default(true)    
   medicines Medicine[]
-  
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt         
 }
 
 model Medicine {
-  id           String        @id @default(uuid())
+  id           String         @id @default(uuid())
   name         String
   brand        String
-  form         MedicineForm   
+  form         MedicineForm
   price        Float
   stock        Int
   description  String
@@ -55,10 +57,11 @@ model Medicine {
   status       MedicineStatus @default(ACTIVE)
 
   sellerId     String
-  seller       User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller       User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   categoryId   String
-  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category     Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  
 
   reviews      Review[]
   orderItems   OrderItem[]
@@ -68,6 +71,7 @@ model Medicine {
 
   @@index([sellerId])
   @@index([categoryId])
+  @@index([status])
 }
 
 enum MedicineForm {
@@ -79,16 +83,15 @@ enum MedicineForm {
   DROPS
 }
 
-
 enum MedicineStatus {
   ACTIVE
   OUT_OF_STOCK
   DISABLED
 }
 
-
 model Order {
   id          String       @id @default(uuid())
+
   customerId  String
   customer    User         @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
@@ -96,14 +99,16 @@ model Order {
 
   total       Float
   address     String
-
+  phone       String?     
+  paymentMethod String     @default("COD")
   items       OrderItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
 }
-
-
 
 model OrderItem {
   id         String   @id @default(uuid())
@@ -112,10 +117,19 @@ model OrderItem {
   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   medicineId String
-  medicine   Medicine @relation(fields: [medicineId], references: [id])
+  medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  //  Restrict recommended: sold medicine delete prevent
+
+  //  seller snapshot (seller orders easily)
+  sellerId   String
+  seller     User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   quantity   Int
-  price      Float
+  price      Float     // snapshot price
+
+  @@index([orderId])
+  @@index([medicineId])
+  @@index([sellerId])
 }
 
 enum OrderStatus {
@@ -137,14 +151,11 @@ model Review {
 
   medicineId String
   medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, medicineId])
+
   createdAt  DateTime @default(now())
-
+  updatedAt  DateTime @updatedAt   
+  @@index([medicineId])
+  @@index([userId])
 }
-
-
-
-
-
-

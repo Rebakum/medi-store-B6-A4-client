@@ -4,7 +4,6 @@ import sendResponse from "../../utils/sendResponse";
 import { checkoutSchema } from "./order.validation";
 import { orderService } from "./order.service";
 
-
 const checkout = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.id ?? req.user?.userId;
   const role = req.user?.role;
@@ -69,6 +68,7 @@ const cancel = catchAsync(async (req: any, res: Response) => {
 
 const updateStatus = catchAsync(async (req: any, res: Response) => {
   const { status } = req.body;
+
   const result = await orderService.updateOrderStatus(req.params.id, status);
 
   sendResponse(res, {
@@ -77,6 +77,40 @@ const updateStatus = catchAsync(async (req: any, res: Response) => {
   });
 });
 
+// SELLER ORDER CONTROLLER
+const sellerOrders = catchAsync(async (req: any, res: Response) => {
+  const sellerId = req.user?.id ?? req.user?.userId;
+  const role = req.user?.role;
+
+  const result = await orderService.getSellerOrders(sellerId, role, req.query);
+
+  sendResponse(res, {
+    message: "Seller orders fetched successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+const sellerUpdateStatus = catchAsync(async (req: any, res: Response) => {
+  const sellerId = req.user?.id ?? req.user?.userId;
+  const role = req.user?.role;
+
+  const { status } = req.body;
+
+  const result = await orderService.updateOrderStatusBySeller(
+    sellerId,
+    role,
+    req.params.id,
+    status
+  );
+
+  sendResponse(res, {
+    message: "Order status updated successfully",
+    data: result,
+  });
+});
+
+
 export const orderController = {
   checkout,
   myOrders,
@@ -84,4 +118,6 @@ export const orderController = {
   getOne,
   cancel,
   updateStatus,
+  sellerOrders,
+  sellerUpdateStatus,
 };

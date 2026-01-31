@@ -6,6 +6,7 @@ import router from "./routes";
 import { notFound } from "./middleware/notFound";
 import { ensureSuperAdmin } from "./seedAmin/ensureSuperAdmin";
 import orderRouter from "./modules/order/order.route";
+import globalErrorHandler from "./middleware/globalErrorHandler";
 
 
 
@@ -40,6 +41,7 @@ app.get("/", (req, res) => {
 });
 
 app.use(notFound);
+app.use(globalErrorHandler);
 
 
 export default app;

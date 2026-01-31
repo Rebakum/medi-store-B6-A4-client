@@ -2,24 +2,37 @@ import { Router } from "express";
 import { categoryController } from "./category.controller";
 import { validateRequest } from "../../middleware/validateRequest";
 import { createCategorySchema, updateCategorySchema } from "./category.validation";
-
+import { authenticate } from "../../middleware/auth";
+import { authorize } from "../../middleware/authorize";
 
 const categoryRouter = Router();
 
-// public
+//  public
 categoryRouter.get("/", categoryController.getAllCategories);
 categoryRouter.get("/:id", categoryController.getOneCategory);
-// admin only (or admin+seller )
-categoryRouter.post(  "/", validateRequest(createCategorySchema), categoryController.createCategory);
 
-categoryRouter.patch(  "/:id", validateRequest(updateCategorySchema), categoryController.updateCategory);
-  
-  
+//  admin only
+categoryRouter.post(
+  "/",
+  authenticate,
+  authorize("ADMIN"),
+  validateRequest(createCategorySchema),
+  categoryController.createCategory
+);
 
+categoryRouter.patch(
+  "/:id",
+  authenticate,
+  authorize("ADMIN"),
+  validateRequest(updateCategorySchema),
+  categoryController.updateCategory
+);
 
-// categoryRouter.delete(
-//   "/:id",
-//   categoryController.removeCategory
-// );
+categoryRouter.delete(
+  "/:id",
+  authenticate,
+  authorize("ADMIN"),
+  categoryController.removeCategory
+);
 
 export default categoryRouter;

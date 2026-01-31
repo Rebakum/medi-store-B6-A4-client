@@ -5,14 +5,16 @@
 ```
  "email": "admin@gmail.com",
     "password": "Admin1234"
-    
-    "name": "Mahin Seller ",
-    "email": "mahin01@example.com",
-    "password": "Mahin1234",
+
+    "name": "Seller ",
+    "email": "seller@example.com",
+    "password": "Seller1234",
     "role": "SELLER"
 
+       "name": "Customer ",
        "email": "customer@example.com",
-       "password": "Mahin1234"
+       "password": "Customer1234",
+       "role": "CUSTOMER"
 ```
 ## work flow
 ```

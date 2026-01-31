@@ -3,20 +3,28 @@ import ApiError from "../../utils/apiError";
 import httpStatus from "http-status";
 
 
-  const createCategory = async (payload: { name: string }) => {
-    const name = payload.name.trim();
+ const createCategory = async (payload: { name: string }) => {
+  const name = payload.name.trim().toLowerCase();
 
-    const exists = await prisma.category.findUnique({ where: { name } });
-    if (exists) {
-      throw new ApiError(httpStatus.CONFLICT, "Category already exists");
-    }
+  const exists = await prisma.category.findFirst({
+    where: {
+      name: {
+        equals: name,
+        mode: "insensitive",
+      },
+    },
+  });
 
-    const created = await prisma.category.create({
-      data: { name },
-    });
-
-    return created;
+  if (exists) {
+    throw new ApiError(httpStatus.CONFLICT, "Category already exists");
   }
+
+  const created = await prisma.category.create({
+    data: { name },
+  });
+
+  return created;
+};
 
  const getAllCategories = async () => {
     return prisma.category.findMany({
