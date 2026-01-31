@@ -9,7 +9,7 @@ datasource db {
 }
 model User {
   id        String   @id @default(uuid())
-  name      String
+  name      String?
   email     String   @unique
   password  String
 
@@ -21,8 +21,10 @@ model User {
   orders    Order[]      // customer
   reviews   Review[]
 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
 }
 
 enum Role {
@@ -35,6 +37,7 @@ model Category {
   name      String     @unique
 
   medicines Medicine[]
+  
 
   createdAt DateTime @default(now())
 }
@@ -42,6 +45,8 @@ model Category {
 model Medicine {
   id           String        @id @default(uuid())
   name         String
+  brand        String
+  form         MedicineForm   
   price        Float
   stock        Int
   description  String
@@ -49,19 +54,32 @@ model Medicine {
 
   status       MedicineStatus @default(ACTIVE)
 
-  // relations
   sellerId     String
   seller       User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   categoryId   String
-  category     Category      @relation(fields: [categoryId], references: [id])
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   reviews      Review[]
-  orderItem  OrderItem []
+  orderItems   OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([categoryId])
 }
+
+enum MedicineForm {
+  TABLET
+  CAPSULE
+  SYRUP
+  INJECTION
+  OINTMENT
+  DROPS
+}
+
+
 enum MedicineStatus {
   ACTIVE
   OUT_OF_STOCK
@@ -71,7 +89,6 @@ enum MedicineStatus {
 
 model Order {
   id          String       @id @default(uuid())
-
   customerId  String
   customer    User         @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
@@ -120,8 +137,10 @@ model Review {
 
   medicineId String
   medicine   Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
-
+  
+  @@unique([userId, medicineId])
   createdAt  DateTime @default(now())
+
 }
 
 

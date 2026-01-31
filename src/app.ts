@@ -1,8 +1,11 @@
+
 import express, { Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { notFound } from "./middleware/notFound";
+import { ensureSuperAdmin } from "./seedAmin/ensureSuperAdmin";
+import orderRouter from "./modules/order/order.route";
 
 
 
@@ -23,8 +26,13 @@ app.use(cookieParser());
 
 app.use(express.json());
 
+ensureSuperAdmin();
+
 
 // MAIN ROUTE
+
+
+
 app.use("/api/v1", router);
 
 app.get("/", (req, res) => {
