@@ -1,9 +1,11 @@
 import { User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import bcrypt from "bcrypt";
+import httpStatus from "http-status"
 
 import { signAccessToken, signRefreshToken, TokenPayload, verifyRefreshToken } from "../../utils/jwt";
 import ApiError from "../../utils/apiError";
+import { safeUnlink } from "../../utils/file.util";
 
 type UpdateProfilePayload = {
   name?: string;
@@ -178,6 +180,59 @@ const deleteUser = async (id: string) => {
   });
 };
 
+
+//  avatar upload
+const updateAvatar = async (userId: string, avatarPath: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+
+  // delete old avatar
+  if (user.avatar && user.avatar !== avatarPath) safeUnlink(user.avatar);
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { avatar: avatarPath },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatar: true,
+      sellerLogo: true,
+      isActive: true,
+      updatedAt: true,
+    },
+  });
+};
+
+//  seller logo upload (SELLER only)
+const updateSellerLogo = async (userId: string, logoPath: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+
+  if (user.role !== "SELLER") {
+    throw new ApiError(httpStatus.FORBIDDEN, "Only seller can upload seller logo");
+  }
+
+  if (user.sellerLogo && user.sellerLogo !== logoPath) safeUnlink(user.sellerLogo);
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { sellerLogo: logoPath },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatar: true,
+      sellerLogo: true,
+      isActive: true,
+      updatedAt: true,
+    },
+  });
+};
+
+
 export const authService = {
    register,
     login ,   
@@ -187,4 +242,6 @@ export const authService = {
     getAllUsers,
     deleteUser , 
     getSingleUser,
+    updateAvatar,
+    updateSellerLogo
     };

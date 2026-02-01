@@ -9,6 +9,13 @@ const orderRouter = Router();
 orderRouter.post("/checkout", authenticate, authorize("CUSTOMER", "ADMIN"), orderController.checkout);
 orderRouter.get("/me", authenticate, orderController.myOrders);
 orderRouter.get("/:id", authenticate, orderController.getOne);
+orderRouter.put(
+  "/:id/items",
+  authenticate,
+  authorize("CUSTOMER", "ADMIN"),
+  orderController.updateMyOrderItems
+);
+
 orderRouter.patch("/:id/cancel", authenticate, authorize("CUSTOMER", "ADMIN"), orderController.cancel);
 
 // admin

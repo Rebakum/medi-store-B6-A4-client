@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { authService } from "./auth.service";
+import ApiError from "../../utils/apiError";
+import httpStatus  from "http-status"
+import { publicPathFromFile } from "../../utils/publicPathFromFile";
+import { uploadAvatarMulter, uploadSellerLogoMulter } from "../../config/multer.config";
 
 const register = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
@@ -19,10 +23,10 @@ const login = catchAsync(async (req: Request, res: Response) => {
 
   const data = await authService.login(email, password);
 
-  // ✅ refresh token httpOnly cookie
+  //  refresh token httpOnly cookie
   res.cookie("refreshToken", data.refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // ✅ prod true
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -109,6 +113,51 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+
+
+// PATCH /auth/me/avatar
+const uploadAvatar = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user?.userId ?? req.user?.id;
+  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+
+  req.uploadMeta = { area: "users", entityId: userId, filename: "avatar" };
+
+(uploadAvatarMulter as any)(req, res, async (err: any) => {
+  if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
+  if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "avatar is required");
+
+  const avatarPath = publicPathFromFile(req.file);
+  const updated = await authService.updateAvatar(userId, avatarPath);
+
+  sendResponse(res, { message: "Avatar uploaded successfully", data: updated });
+});
+
+});
+
+// PATCH /auth/me/seller-logo
+const uploadSellerLogo = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user?.userId ?? req.user?.id;
+  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+
+ req.uploadMeta = { area: "sellers", entityId: userId, filename: "logo" };
+
+(uploadSellerLogoMulter as any)(req, res, async (err: any) => {
+  if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
+  if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "logo is required");
+
+  const logoPath = publicPathFromFile(req.file);
+  const updated = await authService.updateSellerLogo(userId, logoPath);
+
+  sendResponse(res, { message: "Seller logo uploaded successfully", data: updated });
+});
+
+});
+
+
+
+
+
 export const authController = {
   register,
   login,
@@ -118,4 +167,6 @@ export const authController = {
   getAllUsers,
   getSingleUser,
   deleteUser,
+  uploadAvatar,
+  uploadSellerLogo
 };

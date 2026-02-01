@@ -1,79 +1,92 @@
-import { Request, RequestHandler, Response } from "express";
+import { Request, Response } from "express";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 import { categoryService } from "./category.service";
 import { createCategorySchema, updateCategorySchema } from "./category.validation";
+import ApiError from "../../utils/apiError";
+import httpStatus from "http-status";
+import { upload } from "../../config/multer.config";
+import { publicPathFromFile } from "../../utils/publicPathFromFile";
 
 
 
-  const createCategory = (async (req:Request, res:Response) => {
-    const parsed = createCategorySchema.parse(req.body);
-    const result = await categoryService.createCategory(parsed);
+const createCategory = catchAsync(async (req: any, res: Response) => {
+  const parsed = createCategorySchema.parse(req.body);
 
-    res.status(201).json({
-      success: true,
-      message: "Category created successfully",
-      data: result,
-    });
-  })
+  const payload: { name: string; image?: string } = {
+    name: parsed.name,
+  };
 
-  const getAllCategories = (async (_req:Request, res:Response) => {
-    const result = await categoryService.getAllCategories();
-    const formatted = result.map(c => ({
-      id: c.id,
-      name: c.name,
-      createdAt: c.createdAt,
-      medicineCount: c.medicines.length,
-    }));
+  if (req.file) {
+    payload.image = publicPathFromFile(req.file); 
+  }
 
-    res.json({
-      success: true,
-      message: "Categories fetched successfully",
-      data: formatted,
-    });
-  }) 
+  const result = await categoryService.createCategory(payload);
 
-  const getOneCategory = (async (req:Request, res:Response) => {
-    const result = await categoryService.getSingleCategory(req.params.id as string);
+  sendResponse(res, {
+    statusCode: 201,
+    message: "Category created successfully",
+    data: result,
+  });
+});
 
-    res.json({
-      success: true,
-      message: "Category fetched successfully",
-      data: result,
-    });
-  })
 
-const updateCategory = (async (req: Request, res: Response) => {
-  const parsed = updateCategorySchema.parse(req.body);
+const getAllCategories = catchAsync(async (_req: Request, res: Response) => {
+  const result = await categoryService.getAllCategories();
 
-  const payload: { name?: string } = {};
-  if (typeof parsed.name === "string") payload.name = parsed.name;
+  const formatted = result.map(c => ({
+    id: c.id,
+    name: c.name,
+    image: c.image ?? null,
+    createdAt: c.createdAt,
+    medicineCount: c.medicines.length,
+  }));
 
-  const result = await categoryService.updateCategory(req.params.id as string, payload);
+  sendResponse(res, {
+    message: "Categories fetched successfully",
+    data: formatted,
+  });
+});
 
-  res.json({
-    success: true,
+const getOneCategory = catchAsync(async (req: Request, res: Response) => {
+  const result = await categoryService.getSingleCategory(req.params.id as string);
+
+  sendResponse(res, {
+    message: "Category fetched successfully",
+    data: result,
+  });
+});
+
+const updateCategory = catchAsync(async (req: any, res) => {
+  const payload: any = {};
+
+  if (req.body.name) payload.name = req.body.name;
+  if (req.file) payload.image = publicPathFromFile(req.file);
+console.log("CT:", req.headers["content-type"]);
+console.log("BODY:", req.body);
+console.log("FILE:", req.file);
+  const result = await categoryService.updateCategory(req.params.id, payload);
+
+  sendResponse(res, {
     message: "Category updated successfully",
     data: result,
   });
 });
 
 
+const removeCategory = catchAsync(async (req: Request, res: Response) => {
+  const result = await categoryService.deleteCategory(req.params.id as string);
 
-  const removeCategory= (async (req:Request, res:Response) => {
-    const result = await categoryService.deleteCategory(req.params.id as string);
-
-    res.json({
-      success: true,
-      message: "Category deleted successfully",
-      data: result,
-    });
-  }) 
-
+  sendResponse(res, {
+    message: "Category deleted successfully",
+    data: result,
+  });
+});
 
 export const categoryController = {
   createCategory,
   getAllCategories,
   getOneCategory,
   updateCategory,
-  removeCategory
-
-}
+   removeCategory,
+};

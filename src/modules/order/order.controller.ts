@@ -1,10 +1,13 @@
 import { Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
-import { checkoutSchema } from "./order.validation";
+import { checkoutSchema, updateOrderItemsSchema } from "./order.validation";
 import { orderService } from "./order.service";
 
 const checkout = catchAsync(async (req: any, res: Response) => {
+  console.log("USER:", req.user);
+  console.log("BODY:", req.body);
+
   const userId = req.user?.id ?? req.user?.userId;
   const role = req.user?.role;
 
@@ -53,6 +56,21 @@ const getOne = catchAsync(async (req: any, res: Response) => {
     data: result,
   });
 });
+//  UpdateMyOrderItems
+const updateMyOrderItems = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user?.id ?? req.user?.userId;
+  const role = req.user?.role;
+
+  const parsed = updateOrderItemsSchema.parse(req.body);
+
+  const result = await orderService.updateOrderItems(req.params.id, userId, role, parsed.items);
+
+  sendResponse(res, {
+    message: "Order updated successfully",
+    data: result,
+  });
+});
+
 
 const cancel = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.id ?? req.user?.userId;
@@ -116,6 +134,7 @@ export const orderController = {
   myOrders,
   allOrders,
   getOne,
+  updateMyOrderItems,
   cancel,
   updateStatus,
   sellerOrders,

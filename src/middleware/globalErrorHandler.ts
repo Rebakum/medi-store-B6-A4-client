@@ -19,27 +19,23 @@ const globalErrorHandler = (
     message = err.message;
   }
 
-  //  Zod error (v4 uses "issues")
-  else if (err instanceof ZodError) {
-    statusCode = 400;
-    message = "Validation error";
-    errors = err.issues.map((i) => ({
-      field: i.path.join("."),
-      message: i.message,
-    }));
-  }
 
-  //  Prisma known error
-  else if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    // Unique constraint
-    if (err.code === "P2002") {
-      statusCode = 409;
-      const target = Array.isArray(err.meta?.target)
-        ? err.meta?.target.join(", ")
-        : String(err.meta?.target ?? "field");
-      message = `Duplicate value for ${target}`;
-    }
-  }
+
+else if (err instanceof ZodError) {
+  statusCode = 400;
+  message = "Validation error";
+  errors = err.issues.map(i => ({
+    field: i.path.join("."),
+    message: i.message,
+  }));
+}
+
+
+else if (err instanceof Prisma.PrismaClientUnknownRequestError) {
+  statusCode = 500;
+  message = err.message;
+}
+
 
   //  normal error
   else if (err instanceof Error) {

@@ -14,18 +14,22 @@ model User {
   email     String   @unique
   password  String
 
+  avatar    String?        // profile picture
+  sellerLogo String?       // pharmacy logo (SELLER only)
+
   role      Role     @default(CUSTOMER)
+  phone String?
   isActive  Boolean  @default(true)
 
-  // relations
-  medicines  Medicine[]  
-  orders     Order[]     
+  medicines  Medicine[]
+  orders     Order[]
   reviews    Review[]
-  orderItems OrderItem[] 
+  orderItems OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 enum Role {
   CUSTOMER
@@ -36,43 +40,47 @@ enum Role {
 model Category {
   id        String   @id @default(uuid())
   name      String   @unique
+  
+  image     String?          // category banner/icon
+  isActive  Boolean  @default(true)
 
-  isActive  Boolean  @default(true)    
   medicines Medicine[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt         
+  updatedAt DateTime @updatedAt
+
+ 
 }
 
+
 model Medicine {
-  id           String         @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
   brand        String
   form         MedicineForm
   price        Float
   stock        Int
-  description  String
+  description String
   manufacturer String
 
-  status       MedicineStatus @default(ACTIVE)
+  images String[] @default([])   
 
-  sellerId     String
-  seller       User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  status MedicineStatus @default(ACTIVE)
 
-  categoryId   String
-  category     Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  
+  sellerId   String
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Restrict)
 
-  reviews      Review[]
-  orderItems   OrderItem[]
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  reviews    Review[]
+  orderItems OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([sellerId])
-  @@index([categoryId])
-  @@index([status])
 }
+
 
 enum MedicineForm {
   TABLET
@@ -99,7 +107,7 @@ model Order {
 
   total       Float
   address     String
-  phone       String?     
+  phone       String     
   paymentMethod String     @default("COD")
   items       OrderItem[]
 

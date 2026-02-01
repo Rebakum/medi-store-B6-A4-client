@@ -16,6 +16,43 @@
        "password": "Customer1234",
        "role": "CUSTOMER"
 ```
+## 🔎 Search
+```
+
+search=ACI → name/brand/manufacturer/description/category.name এ খুঁজবে
+```
+##  Filters
+```
+
+categoryId=...
+
+sellerId=...
+
+brand=Square
+
+form=TABLET | SYRUP | ...
+
+status=ACTIVE | INACTIVE
+
+minPrice=10
+
+maxPrice=1000
+```
+
+
+## Sort
+```
+
+sortBy=createdAt | price | stock | name
+
+sortOrder=asc | desc
+```
+##  Pagination
+```
+page=1
+
+limit=10
+```
 ## work flow
 ```
 

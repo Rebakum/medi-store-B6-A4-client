@@ -38,6 +38,9 @@ authRouter.put(
   validateRequest(authValidation.updateProfile),
   authController.updateProfile
 );
+authRouter.patch("/me/avatar", authenticate, authController.uploadAvatar);
+authRouter.patch("/me/seller-logo", authenticate, authController.uploadSellerLogo);
+
 
 // admin: users management
 authRouter.get("/users", authenticate, authorize("ADMIN"), authController.getAllUsers);

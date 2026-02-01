@@ -7,6 +7,7 @@ import { notFound } from "./middleware/notFound";
 import { ensureSuperAdmin } from "./seedAmin/ensureSuperAdmin";
 import orderRouter from "./modules/order/order.route";
 import globalErrorHandler from "./middleware/globalErrorHandler";
+import path from "path";
 
 
 
@@ -35,6 +36,8 @@ ensureSuperAdmin();
 
 
 app.use("/api/v1", router);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 
 app.get("/", (req, res) => {
   res.send("Server running successfully");
