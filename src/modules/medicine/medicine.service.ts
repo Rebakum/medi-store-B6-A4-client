@@ -6,28 +6,21 @@ import { buildMedicineWhere } from "../../utils/query/filter";
 import { buildSort } from "../../utils/query/sort";
 import { safeUnlink, splitCoverGallery } from "../../utils/file.util";
 import { Role } from "@prisma/client";
-import path from "path";
 
-// type Role = "CUSTOMER" | "SELLER" | "ADMIN";
+type CreateMedicinePayload = {
+  name: string;
+  brand: string;
+  form: any;
+  price: number;
+  stock: number;
+  description: string;
+  manufacturer: string;
+  categoryId: string;
+  status?: any;
+  images?: string[];
+};
 
-
-
-const createMedicine = async (
-  userId: string,
-  role: Role,
-  payload: {
-    name: string;
-    brand: string;
-    form: any;
-    price: number;
-    stock: number;
-    description: string;
-    manufacturer: string;
-    categoryId: string;
-    status?: any;
-    images?: string[];
-  }
-) => {
+const createMedicine = async (userId: string, role: Role, payload: CreateMedicinePayload) => {
   if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized: userId missing");
 
   if (role !== "SELLER" && role !== "ADMIN") {
@@ -59,7 +52,7 @@ const createMedicine = async (
       status,
       categoryId: payload.categoryId,
       sellerId: userId,
-      images, 
+      images,
     },
     include: {
       category: true,
@@ -69,8 +62,8 @@ const createMedicine = async (
 
   return { ...created, ...splitCoverGallery(created.images) };
 };
-// Gey All Medicine
 
+// Get All Medicines (public)
 const getAllMedicines = async (query: any) => {
   const { page, limit, skip } = getPagination(query);
   const where = buildMedicineWhere(query);
@@ -80,7 +73,7 @@ const getAllMedicines = async (query: any) => {
   const { orderBy } = buildSort(
     {
       ...query,
-      // 🔥 search থাকলে default A–Z
+      // search থাকলে default A–Z
       sortBy: query.sortBy ?? (hasSearch ? "name" : undefined),
       sortOrder: query.sortOrder ?? (hasSearch ? "asc" : undefined),
     },
@@ -108,8 +101,7 @@ const getAllMedicines = async (query: any) => {
   };
 };
 
-// Get Single Medicine
-
+// Get Single Medicine (public)
 const getSingleMedicine = async (id: string) => {
   const medicine = await prisma.medicine.findUnique({
     where: { id },
@@ -128,7 +120,7 @@ const getSingleMedicine = async (id: string) => {
   return { ...medicine, ...splitCoverGallery(medicine.images) };
 };
 
-// Update Medicine
+// Update Medicine (SELLER own OR ADMIN)
 const updateMedicine = async (
   id: string,
   userId: string,
@@ -143,7 +135,7 @@ const updateMedicine = async (
     manufacturer: string;
     categoryId: string;
     status: any;
-    images: string[];
+    images: string[]; // incoming NEW images only from controller
   }>
 ) => {
   const medicine = await prisma.medicine.findUnique({ where: { id } });
@@ -159,10 +151,17 @@ const updateMedicine = async (
     if (!category) throw new ApiError(httpStatus.BAD_REQUEST, "Invalid categoryId");
   }
 
+  // ✅ auto status based on stock change
   let nextStatus = payload.status;
   if (typeof payload.stock === "number") {
     if (payload.stock === 0) nextStatus = "OUT_OF_STOCK";
     else if (!nextStatus && medicine.status === "OUT_OF_STOCK") nextStatus = "ACTIVE";
+  }
+
+  // ✅ APPEND images (old + new). DO NOT delete old.
+  let nextImages: string[] | undefined = undefined;
+  if (payload.images && payload.images.length) {
+    nextImages = [...(medicine.images ?? []), ...payload.images];
   }
 
   const updated = await prisma.medicine.update({
@@ -177,7 +176,7 @@ const updateMedicine = async (
       ...(payload.manufacturer ? { manufacturer: payload.manufacturer.trim() } : {}),
       ...(payload.categoryId ? { categoryId: payload.categoryId } : {}),
       ...(nextStatus ? { status: nextStatus } : {}),
-      ...(payload.images ? { images: payload.images } : {}),
+      ...(nextImages ? { images: nextImages } : {}),
     },
     include: {
       category: true,
@@ -187,10 +186,10 @@ const updateMedicine = async (
 
   return { ...updated, ...splitCoverGallery(updated.images) };
 };
-// Delete Medicine
+
+// Delete Medicine (SELLER own OR ADMIN)
 const deleteMedicine = async (id: string, userId: string, role: Role) => {
   const medicine = await prisma.medicine.findUnique({ where: { id } });
-
   if (!medicine) throw new ApiError(httpStatus.NOT_FOUND, "Medicine not found");
 
   const isOwner = medicine.sellerId === userId;
@@ -198,14 +197,11 @@ const deleteMedicine = async (id: string, userId: string, role: Role) => {
     throw new ApiError(httpStatus.FORBIDDEN, "You can delete only your medicines");
   }
 
-  //  delete image files (recommended)
-  (medicine.images ?? []).forEach(p => safeUnlink(p));
+  // ✅ delete image files
+  (medicine.images ?? []).forEach((p) => safeUnlink(p));
 
   return prisma.medicine.delete({ where: { id } });
 };
-
-
-
 
 export const medicineService = {
   createMedicine,
@@ -213,5 +209,4 @@ export const medicineService = {
   getSingleMedicine,
   updateMedicine,
   deleteMedicine,
-  
 };

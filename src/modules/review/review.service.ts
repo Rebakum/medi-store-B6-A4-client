@@ -31,7 +31,7 @@ const REVIEW_INCLUDE = {
 
 const isUniqueViolation = (err: any) => err?.code === "P2002";
 
-// ✅ sort fields allowed
+//  sort fields allowed
 const REVIEW_SORT_FIELDS = ["createdAt", "rating"] as const;
 
 const createReview = async (userId: string, role: Role, payload: CreateReviewPayload) => {

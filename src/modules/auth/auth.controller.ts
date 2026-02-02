@@ -68,6 +68,25 @@ const logout = catchAsync(async (_req: Request, res: Response) => {
   });
 });
 
+const me = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user?.userId ?? req.user?.id;
+
+  if (!userId) {
+    return sendResponse(res, {
+      statusCode: 401,
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
+  const user = await authService.getMe(userId);
+
+  sendResponse(res, {
+    message: "Me fetched successfully",
+    data: user,
+  });
+});
+
 const updateProfile = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
 
@@ -163,6 +182,7 @@ export const authController = {
   login,
   refresh,
   logout,
+  me,
   updateProfile,
   getAllUsers,
   getSingleUser,

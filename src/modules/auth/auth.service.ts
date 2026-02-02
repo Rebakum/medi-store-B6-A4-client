@@ -74,6 +74,25 @@ const refreshToken = async (refreshToken: string) => {
   return { loggedOut: true };
 };
 
+const getMe = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      avatar: true,
+      sellerLogo: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!user) throw new Error("User not found");
+  return user;
+};
 
 
 
@@ -238,6 +257,7 @@ export const authService = {
     login ,   
     refreshToken,
     logout,
+    getMe,
     updateProfile,
     getAllUsers,
     deleteUser , 

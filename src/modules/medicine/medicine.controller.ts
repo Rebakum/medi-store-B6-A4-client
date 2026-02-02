@@ -2,13 +2,8 @@ import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { medicineService } from "./medicine.service";
-import { createMedicineSchema, updateMedicineSchema } from "./medicine.validation";
-import ApiError from "../../utils/apiError";
-import httpStatus from "http-status";
-import { upload } from "../../config/multer.config"; 
+import { updateMedicineSchema } from "./medicine.validation";
 import { publicPathFromFile } from "../../utils/publicPathFromFile";
-
-
 
 const createMedicine = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
@@ -17,7 +12,8 @@ const createMedicine = catchAsync(async (req: any, res: Response) => {
   const files = (req.files as Express.Multer.File[]) || [];
   const images = files.map(publicPathFromFile);
 
-  const parsed = req.body; // already validated by validateRequest
+  // validateRequest(createMedicineSchema) already ran in route
+  const parsed = req.body;
 
   const result = await medicineService.createMedicine(userId, role, { ...parsed, images });
 
@@ -27,7 +23,6 @@ const createMedicine = catchAsync(async (req: any, res: Response) => {
     data: result,
   });
 });
-
 
 const getAllMedicines = catchAsync(async (req: Request, res: Response) => {
   const result = await medicineService.getAllMedicines((req as any).query);
@@ -52,33 +47,26 @@ const updateMedicine = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
   const role = req.user?.role;
 
-  // ✅ if you use route-level validateRequest, you can skip parse here
+  //  body validate (route-level validateRequest is there; still ok to parse here)
   const parsed = updateMedicineSchema.parse(req.body);
 
-  // ✅ build safe payload (exactOptionalPropertyTypes safe)
+  //  build safe payload (exactOptionalPropertyTypes safe)
   const payload: any = {};
   for (const [k, v] of Object.entries(parsed)) {
     if (v !== undefined) payload[k] = v;
   }
 
-  // ✅ NEW: handle incoming images (form-data)
+  //  NEW: handle incoming images (form-data)
   const files = (req.files as Express.Multer.File[]) || [];
   if (files.length) {
     const newImages = files.map(publicPathFromFile);
 
-    // option A: REPLACE all images with newly uploaded images
+    //  IMPORTANT: controller ONLY sends new images
+    // append happens in service
     payload.images = newImages;
-
-    // option B (if you want APPEND instead):
-    // payload.images = [...(medicine.images ?? []), ...newImages]  // needs medicine fetch
   }
 
-  const result = await medicineService.updateMedicine(
-    req.params.id,
-    userId,
-    role,
-    payload
-  );
+  const result = await medicineService.updateMedicine(req.params.id, userId, role, payload);
 
   sendResponse(res, {
     message: "Medicine updated successfully",

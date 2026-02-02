@@ -32,11 +32,18 @@ medicineRouter.patch(
   "/:id",
   authenticate,
   authorize("ADMIN", "SELLER"),
-
-  upload.array("images", 5),         
+  (req: any, _res, next) => {
+    req.uploadMeta = {
+      area: "medicines",
+      entityId: req.user?.userId ?? req.user?.id ?? "common",
+    };
+    next();
+  },
+  upload.array("images", 5),
   validateRequest(updateMedicineSchema),
   medicineController.updateMedicine
 );
+
 
 
 medicineRouter.delete(

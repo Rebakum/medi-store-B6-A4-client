@@ -24,20 +24,21 @@ authRouter.post(
   validateRequest(authValidation.login),
   authController.login
 );
-
 // refresh uses cookie refreshToken (no authenticate needed)
 authRouter.post("/refresh", authController.refresh);
-
 // logout clears cookie (no authenticate required, but ok if you want)
 authRouter.post("/logout", authController.logout);
-
 // profile (must be logged in)
+authRouter.get("/me", authenticate, authController.me);
+
 authRouter.put(
   "/profile",
   authenticate,
   validateRequest(authValidation.updateProfile),
   authController.updateProfile
 );
+
+
 authRouter.patch("/me/avatar", authenticate, authController.uploadAvatar);
 authRouter.patch("/me/seller-logo", authenticate, authController.uploadSellerLogo);
 
