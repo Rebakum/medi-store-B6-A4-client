@@ -78,16 +78,18 @@ const getMe = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      avatar: true,
-      sellerLogo: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+  id: true,
+  name: true,
+  email: true,
+  phone: true,    
+  role: true,
+  isActive: true,
+  avatar: true,
+  sellerLogo: true,
+  createdAt: true,
+  updatedAt: true,
+}
+
   });
 
   if (!user) throw new Error("User not found");
@@ -116,15 +118,15 @@ export const updateProfile = async (userId: string, payload: any) => {
   const data: any = {};
 
   if (payload.name) data.name = payload.name;
+  if (payload.phone !== undefined) data.phone = payload.phone;
+
   if (payload.isActive !== undefined) data.isActive = payload.isActive;
 
-  // 3 Password
-  if (payload.password) {
+    if (payload.password) {
     data.password = await bcrypt.hash(payload.password, 10);
   }
 
-  // 4 Email unique check
-  if (payload.email) {
+    if (payload.email) {
     const email = payload.email.toLowerCase().trim();
 
     const exists = await prisma.user.findFirst({
@@ -146,14 +148,19 @@ export const updateProfile = async (userId: string, payload: any) => {
   const updated = await prisma.user.update({
     where: { id: userId },
     data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      updatedAt: true,
-    },
+  select: {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,      
+  role: true,
+  isActive: true,
+  avatar: true,
+  sellerLogo: true,
+  createdAt: true,
+  updatedAt: true,
+}
+
   });
 
   return updated;
@@ -224,20 +231,24 @@ const updateAvatar = async (userId: string, avatarPath: string) => {
   });
 };
 
-//  seller logo upload (SELLER only)
-const updateSellerLogo = async (userId: string, logoPath: string) => {
+
+
+//  seller logo upload (SELLER only) + title update
+const updateSellerLogo = async (userId: string, logoPath: string, title?: string) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new ApiError(httpStatus.NOT_FOUND, "User not found");
 
-  if (user.role !== "SELLER") {
-    throw new ApiError(httpStatus.FORBIDDEN, "Only seller can upload seller logo");
-  }
-
+  // delete old logo
   if (user.sellerLogo && user.sellerLogo !== logoPath) safeUnlink(user.sellerLogo);
+
+  const cleanTitle = (title ?? "").trim();
 
   return prisma.user.update({
     where: { id: userId },
-    data: { sellerLogo: logoPath },
+    data: {
+      sellerLogo: logoPath,
+      ...(cleanTitle ? { name: cleanTitle } : {}), 
+    },
     select: {
       id: true,
       name: true,
@@ -251,17 +262,16 @@ const updateSellerLogo = async (userId: string, logoPath: string) => {
   });
 };
 
-
 export const authService = {
-   register,
-    login ,   
-    refreshToken,
-    logout,
-    getMe,
-    updateProfile,
-    getAllUsers,
-    deleteUser , 
-    getSingleUser,
-    updateAvatar,
-    updateSellerLogo
-    };
+  register,
+  login,
+  refreshToken,
+  logout,
+  getMe,
+  updateProfile,
+  getAllUsers,
+  deleteUser,
+  getSingleUser,
+  updateAvatar,
+  updateSellerLogo,
+};

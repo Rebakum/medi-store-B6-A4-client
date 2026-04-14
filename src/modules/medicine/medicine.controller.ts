@@ -5,17 +5,28 @@ import { medicineService } from "./medicine.service";
 import { updateMedicineSchema } from "./medicine.validation";
 import { publicPathFromFile } from "../../utils/publicPathFromFile";
 
+
 const createMedicine = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
   const role = req.user?.role;
 
-  const files = (req.files as Express.Multer.File[]) || [];
-  const images = files.map(publicPathFromFile);
+  // ✅ fields upload হলে req.files object হবে
+  const filesObj = (req.files ?? {}) as Record<string, Express.Multer.File[]>;
+  const imageFiles = filesObj["images"] ?? [];
+  const images = imageFiles.map(publicPathFromFile);
 
-  // validateRequest(createMedicineSchema) already ran in route
+  // ✅ NEW: brandLogo from file OR body
+  const brandLogoFile = (filesObj["brandLogo"] ?? [])[0];
+  const brandLogoPathFromFile = brandLogoFile ? publicPathFromFile(brandLogoFile) : undefined;
+
   const parsed = req.body;
 
-  const result = await medicineService.createMedicine(userId, role, { ...parsed, images });
+  const result = await medicineService.createMedicine(userId, role, {
+    ...parsed,
+    images,
+    // file priority
+    brandLogo: brandLogoPathFromFile ?? parsed.brandLogo,
+  });
 
   sendResponse(res, {
     statusCode: 201,
@@ -43,27 +54,41 @@ const getOneMedicine = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMyMedicines = catchAsync(async (req: any, res: Response) => {
+  const userId = req.user?.userId ?? req.user?.id;
+  const role = req.user?.role;
+
+  const result = await medicineService.getMyMedicines(userId, role, req.query);
+
+  sendResponse(res, {
+    message: "My medicines fetched successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+
 const updateMedicine = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
   const role = req.user?.role;
 
-  //  body validate (route-level validateRequest is there; still ok to parse here)
   const parsed = updateMedicineSchema.parse(req.body);
 
-  //  build safe payload (exactOptionalPropertyTypes safe)
   const payload: any = {};
   for (const [k, v] of Object.entries(parsed)) {
     if (v !== undefined) payload[k] = v;
   }
 
-  //  NEW: handle incoming images (form-data)
-  const files = (req.files as Express.Multer.File[]) || [];
-  if (files.length) {
-    const newImages = files.map(publicPathFromFile);
+  const filesObj = (req.files ?? {}) as Record<string, Express.Multer.File[]>;
+  const imageFiles = filesObj["images"] ?? [];
+  if (imageFiles.length) {
+    payload.images = imageFiles.map(publicPathFromFile); // controller sends only NEW images
+  }
 
-    //  IMPORTANT: controller ONLY sends new images
-    // append happens in service
-    payload.images = newImages;
+  // ✅ NEW: brandLogo update (file)
+  const brandLogoFile = (filesObj["brandLogo"] ?? [])[0];
+  if (brandLogoFile) {
+    payload.brandLogo = publicPathFromFile(brandLogoFile);
   }
 
   const result = await medicineService.updateMedicine(req.params.id, userId, role, payload);
@@ -85,11 +110,35 @@ const removeMedicine = catchAsync(async (req: any, res: Response) => {
     data: result,
   });
 });
+const getSearchSuggestions = catchAsync(async (req: Request, res: Response) => {
+  const { search } = req.query;
 
+  const result = await medicineService.searchMedicineSuggestions(
+    search as string
+  );
+
+  sendResponse(res, {
+    message: "Suggestions fetched successfully",
+    data: result,
+  });
+});
+
+const getFeaturedMedicines = catchAsync(async (_req: Request, res: Response) => {
+  const result = await medicineService.getFeaturedMedicines();
+
+  sendResponse(res, {
+    statusCode: 200,
+    message: "Featured medicines fetched successfully",
+    data: result,
+  });
+});
 export const medicineController = {
   createMedicine,
   getAllMedicines,
   getOneMedicine,
+  getMyMedicines,
   updateMedicine,
   removeMedicine,
+  getSearchSuggestions,
+  getFeaturedMedicines,
 };

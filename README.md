@@ -7,12 +7,12 @@
     "password": "Admin1234"
 
     "name": "Seller ",
-    "email": "seller@example.com",
+    "email": "seller@gmail.com",
     "password": "Seller1234",
     "role": "SELLER"
 
        "name": "Customer ",
-       "email": "customer@example.com",
+       "email": "Customer@gmail.com",
        "password": "Customer1234",
        "role": "CUSTOMER"
 ```

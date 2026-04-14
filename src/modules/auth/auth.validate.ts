@@ -22,6 +22,7 @@ const passwordSchema = z
   .regex(/[A-Z]/, "Password must contain at least 1 uppercase letter")
   .regex(/[a-z]/, "Password must contain at least 1 letter lowercase")
   .regex(/[0-9]/, "Password must contain at least 1 number");
+  const phoneSchema = z.string().trim().min(6).max(20).optional();
 
 export const authValidation = {
   //  Register
@@ -39,13 +40,13 @@ export const authValidation = {
   }),
 
   //  Update profile
-  updateProfile: z
-    .object({
-      name: nameSchema.optional(),
-      email: emailSchema.optional(),
-      password: passwordSchema.optional(),
-      role: registerRoleEnum.optional(),
-    })
+  updateProfile: z.object({
+  name: nameSchema.optional(),
+  email: emailSchema.optional(),
+  phone: phoneSchema.optional(),         
+  password: passwordSchema.optional(),
+  role: registerRoleEnum.optional(),
+})
     .refine(data => Object.keys(data).length > 0, {
       message: "At least one field is required to update",
     }),

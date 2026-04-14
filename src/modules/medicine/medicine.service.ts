@@ -10,6 +10,7 @@ import { Role } from "@prisma/client";
 type CreateMedicinePayload = {
   name: string;
   brand: string;
+  brandLogo?: string; 
   form: any;
   price: number;
   stock: number;
@@ -20,7 +21,9 @@ type CreateMedicinePayload = {
   images?: string[];
 };
 
+
 const createMedicine = async (userId: string, role: Role, payload: CreateMedicinePayload) => {
+  
   if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized: userId missing");
 
   if (role !== "SELLER" && role !== "ADMIN") {
@@ -44,6 +47,7 @@ const createMedicine = async (userId: string, role: Role, payload: CreateMedicin
     data: {
       name: payload.name.trim(),
       brand: payload.brand.trim(),
+      brandLogo: payload.brandLogo?.trim() || null, // ✅ NEW
       form: payload.form,
       price: payload.price,
       stock: payload.stock,
@@ -63,10 +67,12 @@ const createMedicine = async (userId: string, role: Role, payload: CreateMedicin
   return { ...created, ...splitCoverGallery(created.images) };
 };
 
+
 // Get All Medicines (public)
 const getAllMedicines = async (query: any) => {
   const { page, limit, skip } = getPagination(query);
   const where = buildMedicineWhere(query);
+  
 
   const hasSearch = !!query.search?.toString().trim();
 
@@ -101,6 +107,31 @@ const getAllMedicines = async (query: any) => {
   };
 };
 
+const searchMedicineSuggestions = async (search: string) => {
+  const s = search?.trim();
+  if (!s) return [];
+
+  return prisma.medicine.findMany({
+    where: {
+      OR: [
+        { name: { contains: s, mode: "insensitive" } },
+        { brand: { contains: s, mode: "insensitive" } },
+        { manufacturer: { contains: s, mode: "insensitive" } },
+      ],
+    },
+    take: 6, // 🔥 max 6 suggestion
+    orderBy: {
+      name: "asc", // clean UI sorting
+    },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      images: true,
+    },
+  });
+};
+
 // Get Single Medicine (public)
 const getSingleMedicine = async (id: string) => {
   const medicine = await prisma.medicine.findUnique({
@@ -119,8 +150,52 @@ const getSingleMedicine = async (id: string) => {
 
   return { ...medicine, ...splitCoverGallery(medicine.images) };
 };
+// GetMyMedicine
 
-// Update Medicine (SELLER own OR ADMIN)
+const getMyMedicines = async (userId: string, role: Role, query: any) => {
+  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+
+  const { page, limit, skip } = getPagination(query);
+  const hasSearch = !!query.search?.toString().trim();
+
+  const { orderBy } = buildSort(
+    {
+      ...query,
+      sortBy: query.sortBy ?? (hasSearch ? "name" : undefined),
+      sortOrder: query.sortOrder ?? (hasSearch ? "asc" : undefined),
+    },
+    ["createdAt", "price", "stock", "name"] as const,
+    "createdAt"
+  );
+
+  //  seller filter
+  const where = {
+    ...buildMedicineWhere(query),
+    ...(role === "SELLER" ? { sellerId: userId } : {}), // ADMIN হলে সব দেখতে পারে
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.medicine.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        category: { select: { id: true, name: true } },
+        seller: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.medicine.count({ where }),
+  ]);
+
+  return {
+    meta: buildMeta(page, limit, total),
+    data: items,
+  };
+};
+
+
+// Update Medicine payload add brandLogo
 const updateMedicine = async (
   id: string,
   userId: string,
@@ -128,6 +203,7 @@ const updateMedicine = async (
   payload: Partial<{
     name: string;
     brand: string;
+    brandLogo: string; // ✅ NEW
     form: any;
     price: number;
     stock: number;
@@ -135,7 +211,7 @@ const updateMedicine = async (
     manufacturer: string;
     categoryId: string;
     status: any;
-    images: string[]; // incoming NEW images only from controller
+    images: string[];
   }>
 ) => {
   const medicine = await prisma.medicine.findUnique({ where: { id } });
@@ -146,29 +222,35 @@ const updateMedicine = async (
     throw new ApiError(httpStatus.FORBIDDEN, "You can update only your medicines");
   }
 
+  // NEW: if brandLogo changed, delete old brandLogo file
+  if (payload.brandLogo && medicine.brandLogo && medicine.brandLogo !== payload.brandLogo) {
+    safeUnlink(medicine.brandLogo);
+  }
+
   if (payload.categoryId) {
     const category = await prisma.category.findUnique({ where: { id: payload.categoryId } });
     if (!category) throw new ApiError(httpStatus.BAD_REQUEST, "Invalid categoryId");
   }
 
-  // ✅ auto status based on stock change
+  // auto status based on stock change
   let nextStatus = payload.status;
   if (typeof payload.stock === "number") {
     if (payload.stock === 0) nextStatus = "OUT_OF_STOCK";
     else if (!nextStatus && medicine.status === "OUT_OF_STOCK") nextStatus = "ACTIVE";
   }
 
-  // ✅ APPEND images (old + new). DO NOT delete old.
+  // APPEND images (old + new). DO NOT delete old.
   let nextImages: string[] | undefined = undefined;
   if (payload.images && payload.images.length) {
     nextImages = [...(medicine.images ?? []), ...payload.images];
   }
 
-  const updated = await prisma.medicine.update({
+const updated = await prisma.medicine.update({
     where: { id },
     data: {
       ...(payload.name ? { name: payload.name.trim() } : {}),
       ...(payload.brand ? { brand: payload.brand.trim() } : {}),
+      ...(payload.brandLogo ? { brandLogo: payload.brandLogo } : {}), // ✅ NEW
       ...(payload.form ? { form: payload.form } : {}),
       ...(payload.price != null ? { price: payload.price } : {}),
       ...(payload.stock != null ? { stock: payload.stock } : {}),
@@ -188,6 +270,7 @@ const updateMedicine = async (
 };
 
 // Delete Medicine (SELLER own OR ADMIN)
+
 const deleteMedicine = async (id: string, userId: string, role: Role) => {
   const medicine = await prisma.medicine.findUnique({ where: { id } });
   if (!medicine) throw new ApiError(httpStatus.NOT_FOUND, "Medicine not found");
@@ -197,16 +280,47 @@ const deleteMedicine = async (id: string, userId: string, role: Role) => {
     throw new ApiError(httpStatus.FORBIDDEN, "You can delete only your medicines");
   }
 
-  // ✅ delete image files
   (medicine.images ?? []).forEach((p) => safeUnlink(p));
+
+  
+  if (medicine.brandLogo) safeUnlink(medicine.brandLogo);
 
   return prisma.medicine.delete({ where: { id } });
 };
 
+// FEATURED MEDICINES
+const getFeaturedMedicines = async () => {
+  const medicines = await prisma.medicine.findMany({
+    where: {
+      status: "ACTIVE",
+      stock: {
+        gt: 0,
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 5, // slider limit
+    include: {
+      category: true,
+      seller: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return medicines;
+};
 export const medicineService = {
   createMedicine,
   getAllMedicines,
   getSingleMedicine,
+  getMyMedicines,
   updateMedicine,
   deleteMedicine,
+  searchMedicineSuggestions,
+  getFeaturedMedicines,
 };

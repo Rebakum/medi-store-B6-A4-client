@@ -12,9 +12,22 @@ const medicineRouter = Router();
 
 // public
 medicineRouter.get("/", medicineController.getAllMedicines);
-medicineRouter.get("/:id", medicineController.getOneMedicine);
-// seller/admin
 
+// ✅ special routes FIRST
+medicineRouter.get("/featured", medicineController.getFeaturedMedicines);
+medicineRouter.get("/suggestions", medicineController.getSearchSuggestions);
+
+medicineRouter.get(
+  "/my",
+  authenticate,
+  authorize("SELLER", "ADMIN"),
+  medicineController.getMyMedicines
+);
+
+// ✅ dynamic route ALWAYS LAST
+medicineRouter.get("/:id", medicineController.getOneMedicine);
+
+// seller/admin create
 medicineRouter.post(
   "/",
   authenticate,
@@ -23,20 +36,22 @@ medicineRouter.post(
     req.uploadMeta = { area: "medicines", entityId: req.user?.userId ?? req.user?.id ?? "common" };
     next();
   },
-  upload.array("images", 6),
+  upload.fields([
+  { name: "images", maxCount: 6 },
+  { name: "brandLogo", maxCount: 1 },
+]),
+
   validateRequest(createMedicineSchema),
   medicineController.createMedicine
 );
 
+// seller/admin update
 medicineRouter.patch(
   "/:id",
   authenticate,
   authorize("ADMIN", "SELLER"),
   (req: any, _res, next) => {
-    req.uploadMeta = {
-      area: "medicines",
-      entityId: req.user?.userId ?? req.user?.id ?? "common",
-    };
+    req.uploadMeta = { area: "medicines", entityId: req.user?.userId ?? req.user?.id ?? "common" };
     next();
   },
   upload.array("images", 5),
@@ -44,34 +59,14 @@ medicineRouter.patch(
   medicineController.updateMedicine
 );
 
-
-
+// seller/admin delete
 medicineRouter.delete(
   "/:id",
-  authenticate, authorize("ADMIN", "SELLER"),
-  
-  
+  authenticate,
+  authorize("ADMIN", "SELLER"),
   medicineController.removeMedicine
 );
-// medicineRouter.patch(
-//   "/:id/cover",
-//   authenticate,
-//   authorize("ADMIN", "SELLER"),
-//   medicineController.updateCover
-// );
 
-// medicineRouter.patch(
-//   "/:id/images",
-//   authenticate,
-//   authorize("ADMIN", "SELLER"),
-//   medicineController.addImages
-// );
-
-// medicineRouter.delete(
-//   "/:id/images",
-//   authenticate,
-//   authorize("ADMIN", "SELLER"),
-//   medicineController.removeImage
-// );
 
 export default medicineRouter;
+

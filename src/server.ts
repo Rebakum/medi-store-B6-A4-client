@@ -1,7 +1,9 @@
+import http from "http";
 import app from "./app";
 import config from "./config";
 import { prisma } from "./lib/prisma";
 import { ensureSuperAdmin } from "./seedAmin/ensureSuperAdmin";
+import { initSocket } from "./config/socket";
 
 const port = config.port || 5000;
 
@@ -14,7 +16,14 @@ async function main() {
       await ensureSuperAdmin();
     }
 
-    app.listen(port, () => {
+    //  http server 
+    const server = http.createServer(app);
+
+    // socket init (ALWAYS after server created)
+    initSocket(server);
+
+    // app.listen না, server.listen হবে
+    server.listen(port, () => {
       console.log(`server is running on http://localhost:${port}`);
     });
   } catch (error) {

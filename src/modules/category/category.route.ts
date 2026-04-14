@@ -27,8 +27,8 @@ categoryRouter.patch(
   "/:id",
   authenticate,
   authorize("ADMIN"),
-  upload.single("image"),               // ✅ FIRST
-  validateRequest(updateCategorySchema), // ✅ AFTER
+  upload.single("image"),              
+  validateRequest(updateCategorySchema), 
   categoryController.updateCategory
 );
 

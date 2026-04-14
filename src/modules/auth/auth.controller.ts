@@ -3,7 +3,7 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { authService } from "./auth.service";
 import ApiError from "../../utils/apiError";
-import httpStatus  from "http-status"
+import httpStatus from "http-status";
 import { publicPathFromFile } from "../../utils/publicPathFromFile";
 import { uploadAvatarMulter, uploadSellerLogoMulter } from "../../config/multer.config";
 
@@ -23,7 +23,6 @@ const login = catchAsync(async (req: Request, res: Response) => {
 
   const data = await authService.login(email, password);
 
-  //  refresh token httpOnly cookie
   res.cookie("refreshToken", data.refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -44,7 +43,6 @@ const refresh = catchAsync(async (req: any, res: Response) => {
   const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
-   
     return sendResponse(res, {
       statusCode: 401,
       success: false,
@@ -62,15 +60,11 @@ const refresh = catchAsync(async (req: any, res: Response) => {
 
 const logout = catchAsync(async (_req: Request, res: Response) => {
   res.clearCookie("refreshToken");
-
-  sendResponse(res, {
-    message: "Logged out",
-  });
+  sendResponse(res, { message: "Logged out" });
 });
 
 const me = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
-
   if (!userId) {
     return sendResponse(res, {
       statusCode: 401,
@@ -132,50 +126,46 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
-
-
-// PATCH /auth/me/avatar
+// ✅ PATCH /auth/me/avatar
 const uploadAvatar = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
   if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
 
   req.uploadMeta = { area: "users", entityId: userId, filename: "avatar" };
 
-(uploadAvatarMulter as any)(req, res, async (err: any) => {
-  if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
-  if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "avatar is required");
+  (uploadAvatarMulter as any)(req, res, async (err: any) => {
+    if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
+    if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "avatar is required");
 
-  const avatarPath = publicPathFromFile(req.file);
-  const updated = await authService.updateAvatar(userId, avatarPath);
+    const avatarPath = publicPathFromFile(req.file);
+    const updated = await authService.updateAvatar(userId, avatarPath);
 
-  sendResponse(res, { message: "Avatar uploaded successfully", data: updated });
+    sendResponse(res, { message: "Avatar uploaded successfully", data: updated });
+  });
 });
 
-});
-
-// PATCH /auth/me/seller-logo
+// ✅ PATCH /auth/me/seller-logo  (logo + title)
 const uploadSellerLogo = catchAsync(async (req: any, res: Response) => {
   const userId = req.user?.userId ?? req.user?.id;
   if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
 
- req.uploadMeta = { area: "sellers", entityId: userId, filename: "logo" };
+  req.uploadMeta = { area: "sellers", entityId: userId, filename: "logo" };
 
-(uploadSellerLogoMulter as any)(req, res, async (err: any) => {
-  if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
-  if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "logo is required");
+  (uploadSellerLogoMulter as any)(req, res, async (err: any) => {
+    if (err) throw new ApiError(httpStatus.BAD_REQUEST, err.message || "Upload failed");
+    if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "logo is required");
 
-  const logoPath = publicPathFromFile(req.file);
-  const updated = await authService.updateSellerLogo(userId, logoPath);
+    const logoPath = publicPathFromFile(req.file);
+    const title = (req.body?.title ?? "").toString().trim();
 
-  sendResponse(res, { message: "Seller logo uploaded successfully", data: updated });
+    const updated = await authService.updateSellerLogo(userId, logoPath, title);
+
+    sendResponse(res, {
+      message: "Seller logo uploaded successfully",
+      data: updated,
+    });
+  });
 });
-
-});
-
-
-
-
 
 export const authController = {
   register,
@@ -188,5 +178,5 @@ export const authController = {
   getSingleUser,
   deleteUser,
   uploadAvatar,
-  uploadSellerLogo
+  uploadSellerLogo,
 };

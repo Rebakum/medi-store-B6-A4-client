@@ -24,14 +24,15 @@ const ensureReviewerRole = (role: Role) => {
   }
 };
 
+// ✅ include medicine.images so frontend can show image
 const REVIEW_INCLUDE = {
-  user: { select: { id: true, name: true } },
-  medicine: { select: { id: true, name: true, brand: true } },
+  user: { select: { id: true, name: true, email: true, avatar: true } },
+  medicine: { select: { id: true, name: true, brand: true, images: true } },
 } as const;
 
 const isUniqueViolation = (err: any) => err?.code === "P2002";
 
-//  sort fields allowed
+// sort fields allowed
 const REVIEW_SORT_FIELDS = ["createdAt", "rating"] as const;
 
 const createReview = async (userId: string, role: Role, payload: CreateReviewPayload) => {
@@ -127,7 +128,11 @@ const getReviewsByMedicine = async (medicineId: string) => {
   const reviews = await prisma.review.findMany({
     where: { medicineId },
     orderBy: { createdAt: "desc" },
-    include: { user: { select: { id: true, name: true } } },
+    //  keep medicine minimal here (or you can use REVIEW_INCLUDE if you want)
+    include: {
+      user: { select: { id: true, name: true } },
+      medicine: { select: { id: true, name: true, images: true } },
+    },
   });
 
   const meta = computeReviewMeta(reviews.map((r) => r.rating));
@@ -150,10 +155,11 @@ const updateReview = async (
     throw new ApiError(httpStatus.BAD_REQUEST, "Nothing to update");
   }
 
+  //  return same shape as other endpoints
   return prisma.review.update({
     where: { id: reviewId },
     data,
-    include: { user: { select: { id: true, name: true } } },
+    include: REVIEW_INCLUDE,
   });
 };
 

@@ -56,7 +56,8 @@ model Category {
 model Medicine {
   id           String   @id @default(uuid())
   name         String
-  brand        String
+  brand     String
+  brandLogo String? 
   form         MedicineForm
   price        Float
   stock        Int
