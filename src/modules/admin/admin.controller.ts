@@ -1,21 +1,21 @@
-// modules/admin/admin.controller.ts
 import { Request, Response } from "express";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 import { adminService } from "./admin.service";
 
 export const adminController = {
-  getStats: async (_req: Request, res: Response) => {
+  getStats: catchAsync(async (_req: Request, res: Response) => {
     const data = await adminService.getStats();
-    res.json({ success: true, data });
-  },
+    sendResponse(res, { message: "Stats fetched successfully", data });
+  }),
 
-  getDashboard: async (_req: Request, res: Response) => {
+  getDashboard: catchAsync(async (_req: Request, res: Response) => {
     const data = await adminService.getDashboard();
-    res.json({ success: true, data });
-  },
+    sendResponse(res, { message: "Dashboard fetched successfully", data });
+  }),
 
-  //  NEW: logo upload controller
-  uploadBrandLogo: async (req: any, res: Response) => {
+  uploadBrandLogo: catchAsync(async (req: any, res: Response) => {
     const data = await adminService.uploadBrandLogo(req.file);
-    res.json({ success: true, data });
-  },
+    sendResponse(res, { message: "Logo uploaded successfully", data });
+  }),
 };

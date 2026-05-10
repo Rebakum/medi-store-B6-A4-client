@@ -23,10 +23,20 @@ const createCategory = async (payload: { name: string; image?: string }) => {
 
 
 const getAllCategories = async () => {
-  return prisma.category.findMany({
+  const categories = await prisma.category.findMany({
     orderBy: { createdAt: "desc" },
-    include: { medicines: { select: { id: true } } },
   });
+
+  const counts = await prisma.medicine.groupBy({
+    by: ["categoryId"],
+    _count: { id: true },
+  });
+  const countMap = new Map(counts.map(c => [c.categoryId, c._count.id]));
+
+  return categories.map(c => ({
+    ...c,
+    medicineCount: countMap.get(c.id) ?? 0,
+  }));
 };
 
 const getSingleCategory = async (id: string) => {

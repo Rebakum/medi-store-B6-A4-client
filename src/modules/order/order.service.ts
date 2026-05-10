@@ -28,8 +28,8 @@ const ensureAdmin = (role: Role) => {
   if (role !== "ADMIN") throw new ApiError(httpStatus.FORBIDDEN, "Admin only");
 };
 
-const ensureValidStatusFilter = (status: any) => {
-  if (status && !ALLOWED_STATUS.includes(String(status) as any)) {
+const ensureValidStatusFilter = (status: unknown) => {
+  if (status && !ALLOWED_STATUS.includes(status as OrderStatus)) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid status filter");
   }
 };
@@ -478,23 +478,17 @@ const getSellerOrders = async (sellerId: string, role: Role, query: any) => {
 
   const { page, limit, skip } = getPagination(query);
 
-  //  seller sort works (sort by ORDER fields via relation)
-  const sortBy = ["createdAt", "status", "total"].includes(String(query.sortBy))
-    ? String(query.sortBy)
-    : "createdAt";
-  const sortOrder = String(query.sortOrder) === "asc" ? "asc" : "desc";
+  const SORT_FIELDS = ["createdAt", "status", "total"] as const;
+  const sortBy = SORT_FIELDS.includes(query.sortBy) ? query.sortBy : "createdAt";
+  const sortOrder: "asc" | "desc" = query.sortOrder === "asc" ? "asc" : "desc";
 
   const where: any = { sellerId };
 
-  // order status filter
   if (query.status) where.order = { status: String(query.status) };
 
-  // search (order/customer/medicine)
   const searchWhere = buildSellerSearchWhere(query.search);
   if (searchWhere?.OR) {
-    where.OR = searchWhere.OR;
-    // keep status filter + OR together
-    if (query.status) where.order = { status: String(query.status) };
+    where.AND = [{ OR: searchWhere.OR }];
   }
 
   const [items, total] = await Promise.all([

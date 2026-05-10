@@ -1,52 +1,38 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { geminiModel } from "./ai.service";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 
+export const chatController = catchAsync(async (req: any, res: Response) => {
+  const { message } = req.body;
 
-
-export const chatController = async (req: Request, res: Response) => {
-  try {
-    const { message } = req.body;
-
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: "Message is required",
-      });
-    }
-
-    // const reply = await getChatResponse(message);
-   // 1. Start the chat session with the initial system instruction/history
-const chat = geminiModel.startChat({
-  history: [
-    { 
-      role: "user", 
-      parts: [{ text: `You are a helpful medical store assistant.` }] 
-    },
-    { 
-      role: "model", 
-      parts: [{ text: "Understood. I am ready to assist customers with their medical store inquiries. How can I help you today?" }] 
-    }
-  ]
-});
-
-// 2. Send the user's specific message to the model
-const result = await chat.sendMessage(message);
-
-// 3. Get the text response
-const response = await result.response;
-const replyText = response.text();
-
-console.log(replyText);
-    res.json({
-      success: true,
-      data: { reply: replyText   },
+  if (!message) {
+    return sendResponse(res, {
+      success: false,
+      statusCode: 400,
+      message: "Message is required",
     });
-  }catch (error: any) {
-  console.error("AI ERROR 👉", error);
+  }
 
-  res.status(500).json({
-    success: false,
-    message: error.message || "Something went wrong",
+  const chat = geminiModel.startChat({
+    history: [
+      {
+        role: "user",
+        parts: [{ text: "You are a helpful medical store assistant." }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Understood. I am ready to assist customers with their medical store inquiries. How can I help you today?" }],
+      },
+    ],
   });
-}
-};
+
+  const result = await chat.sendMessage(message);
+  const response = await result.response;
+  const replyText = response.text();
+
+  sendResponse(res, {
+    message: "AI response generated",
+    data: { reply: replyText },
+  });
+});

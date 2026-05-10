@@ -28,7 +28,6 @@ export const buildMedicineWhere = (query: any): Prisma.MedicineWhereInput => {
       },
     ];
   }
-  if (query.form) {  where.form = query.form}
   if (query.categoryId) where.categoryId = String(query.categoryId);
   if (query.sellerId) where.sellerId = String(query.sellerId);
 

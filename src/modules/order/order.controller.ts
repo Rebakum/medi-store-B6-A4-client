@@ -3,16 +3,14 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { checkoutSchema, updateOrderItemsSchema } from "./order.validation";
 import { orderService } from "./order.service";
+import { getUserId } from "../../utils/getUserId";
 
 const checkout = catchAsync(async (req: any, res: Response) => {
-  console.log("USER:", req.user);
-  console.log("BODY:", req.body);
-
-  const userId = req.user?.id ?? req.user?.userId;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
   const parsed = checkoutSchema.parse(req.body);
-  const result = await orderService.checkout(userId, role, parsed);
+  const result = await orderService.checkout(userId!, role, parsed);
 
   sendResponse(res, {
     statusCode: 201,
@@ -22,9 +20,9 @@ const checkout = catchAsync(async (req: any, res: Response) => {
 });
 
 const myOrders = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.id ?? req.user?.userId;
+  const userId = getUserId(req);
 
-  const result = await orderService.getMyOrders(userId, req.query);
+  const result = await orderService.getMyOrders(userId!, req.query);
 
   sendResponse(res, {
     message: "My orders fetched successfully",
@@ -46,10 +44,10 @@ const allOrders = catchAsync(async (req: any, res: Response) => {
 });
 
 const getOne = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.id ?? req.user?.userId;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
-  const result = await orderService.getSingleOrder(req.params.id, userId, role);
+  const result = await orderService.getSingleOrder(req.params.id, userId!, role);
 
   sendResponse(res, {
     message: "Order fetched successfully",
@@ -58,12 +56,12 @@ const getOne = catchAsync(async (req: any, res: Response) => {
 });
 //  UpdateMyOrderItems
 const updateMyOrderItems = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.id ?? req.user?.userId;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
   const parsed = updateOrderItemsSchema.parse(req.body);
 
-  const result = await orderService.updateOrderItems(req.params.id, userId, role, parsed.items);
+  const result = await orderService.updateOrderItems(req.params.id, userId!, role, parsed.items);
 
   sendResponse(res, {
     message: "Order updated successfully",
@@ -73,10 +71,10 @@ const updateMyOrderItems = catchAsync(async (req: any, res: Response) => {
 
 
 const cancel = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.id ?? req.user?.userId;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
-  const result = await orderService.cancelOrder(req.params.id, userId, role);
+  const result = await orderService.cancelOrder(req.params.id, userId!, role);
 
   sendResponse(res, {
     message: "Order cancelled successfully",
@@ -97,10 +95,10 @@ const updateStatus = catchAsync(async (req: any, res: Response) => {
 
 // SELLER ORDER CONTROLLER
 const sellerOrders = catchAsync(async (req: any, res: Response) => {
-  const sellerId = req.user?.id ?? req.user?.userId;
+  const sellerId = getUserId(req);
   const role = req.user?.role;
 
-  const result = await orderService.getSellerOrders(sellerId, role, req.query);
+  const result = await orderService.getSellerOrders(sellerId!, role, req.query);
 
   sendResponse(res, {
     message: "Seller orders fetched successfully",
@@ -110,13 +108,13 @@ const sellerOrders = catchAsync(async (req: any, res: Response) => {
 });
 
 const sellerUpdateStatus = catchAsync(async (req: any, res: Response) => {
-  const sellerId = req.user?.id ?? req.user?.userId;
+  const sellerId = getUserId(req);
   const role = req.user?.role;
 
   const { status } = req.body;
 
   const result = await orderService.updateOrderStatusBySeller(
-    sellerId,
+    sellerId!,
     role,
     req.params.id,
     status

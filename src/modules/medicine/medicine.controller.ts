@@ -4,10 +4,11 @@ import sendResponse from "../../utils/sendResponse";
 import { medicineService } from "./medicine.service";
 import { updateMedicineSchema } from "./medicine.validation";
 import { publicPathFromFile } from "../../utils/publicPathFromFile";
+import { getUserId } from "../../utils/getUserId";
 
 
 const createMedicine = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
   // ✅ fields upload হলে req.files object হবে
@@ -21,7 +22,7 @@ const createMedicine = catchAsync(async (req: any, res: Response) => {
 
   const parsed = req.body;
 
-  const result = await medicineService.createMedicine(userId, role, {
+  const result = await medicineService.createMedicine(userId!, role, {
     ...parsed,
     images,
     // file priority
@@ -55,10 +56,10 @@ const getOneMedicine = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getMyMedicines = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
-  const result = await medicineService.getMyMedicines(userId, role, req.query);
+  const result = await medicineService.getMyMedicines(userId!, role, req.query);
 
   sendResponse(res, {
     message: "My medicines fetched successfully",
@@ -69,7 +70,7 @@ const getMyMedicines = catchAsync(async (req: any, res: Response) => {
 
 
 const updateMedicine = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
   const parsed = updateMedicineSchema.parse(req.body);
@@ -91,7 +92,7 @@ const updateMedicine = catchAsync(async (req: any, res: Response) => {
     payload.brandLogo = publicPathFromFile(brandLogoFile);
   }
 
-  const result = await medicineService.updateMedicine(req.params.id, userId, role, payload);
+  const result = await medicineService.updateMedicine(req.params.id, userId!, role, payload);
 
   sendResponse(res, {
     message: "Medicine updated successfully",
@@ -100,10 +101,10 @@ const updateMedicine = catchAsync(async (req: any, res: Response) => {
 });
 
 const removeMedicine = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
+  const userId = getUserId(req);
   const role = req.user?.role;
 
-  const result = await medicineService.deleteMedicine(req.params.id, userId, role);
+  const result = await medicineService.deleteMedicine(req.params.id, userId!, role);
 
   sendResponse(res, {
     message: "Medicine deleted successfully",

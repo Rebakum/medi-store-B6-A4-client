@@ -45,7 +45,6 @@ medicineRouter.post(
   medicineController.createMedicine
 );
 
-// seller/admin update
 medicineRouter.patch(
   "/:id",
   authenticate,
@@ -54,7 +53,10 @@ medicineRouter.patch(
     req.uploadMeta = { area: "medicines", entityId: req.user?.userId ?? req.user?.id ?? "common" };
     next();
   },
-  upload.array("images", 5),
+  upload.fields([
+    { name: "images", maxCount: 5 },
+    { name: "brandLogo", maxCount: 1 },
+  ]),
   validateRequest(updateMedicineSchema),
   medicineController.updateMedicine
 );

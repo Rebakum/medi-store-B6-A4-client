@@ -21,7 +21,7 @@ const register = async (payload: User) => {
 });
 
 if (exists) {
-  throw new Error("User already exists");
+  throw new ApiError(httpStatus.CONFLICT, "User already exists");
 }
 if (payload.role === "ADMIN") {
   throw new ApiError(403, "Admin cannot be created from public registration");
@@ -41,10 +41,10 @@ if (payload.role === "ADMIN") {
 
  const login = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error("Invalid credentials");
+  if (!user) throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid credentials");
 
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) throw new Error("Invalid credentials");
+  if (!ok) throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid credentials");
 
   const payload = { userId: user.id, role: user.role };
 
@@ -58,7 +58,7 @@ if (payload.role === "ADMIN") {
 
 // Refresh Token
 const refreshToken = async (refreshToken: string) => {
-  if (!refreshToken) throw new Error("Refresh token required");
+  if (!refreshToken) throw new ApiError(httpStatus.UNAUTHORIZED, "Refresh token required");
 
   const decoded = verifyRefreshToken(refreshToken); 
   const payload: TokenPayload  = { userId: decoded.userId, role: decoded.role };  
@@ -92,14 +92,14 @@ const getMe = async (userId: string) => {
 
   });
 
-  if (!user) throw new Error("User not found");
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, "User not found");
   return user;
 };
 
 
 
 export const updateProfile = async (userId: string, payload: any) => {
-  if (!userId) throw new Error("User ID required");
+  if (!userId) throw new ApiError(httpStatus.BAD_REQUEST, "User ID required");
 
   // 1 First find user by ID
   const user = await prisma.user.findUnique({
@@ -107,7 +107,7 @@ export const updateProfile = async (userId: string, payload: any) => {
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
   }
 
   // 2 Block admin role change
@@ -138,7 +138,7 @@ export const updateProfile = async (userId: string, payload: any) => {
     });
 
     if (exists) {
-      throw new Error("Email already exists");
+      throw new ApiError(httpStatus.CONFLICT, "Email already exists");
     }
 
     data.email = email;
@@ -191,7 +191,7 @@ const getSingleUser = async (id: string) => {
     },
   });
 
-  if (!user) throw new Error("User not found");
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, "User not found");
 
   return user;
 };

@@ -15,45 +15,38 @@ export const sellerService = {
     const monthStart = startOfMonth(now);
     const LOW_STOCK_THRESHOLD = 5;
 
-    //  medicines counts
-    const [activeMedicines, lowStock] = await Promise.all([
-      prisma.medicine.count({ where: { sellerId, status: "ACTIVE" } }),
-      prisma.medicine.count({ where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
-    ]);
+    const [activeMedicines, lowStock, sellerOrderIdsRows, recentReviews, lowStockMedicines] =
+      await Promise.all([
+        prisma.medicine.count({ where: { sellerId, status: "ACTIVE" } }),
+        prisma.medicine.count({ where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
+        prisma.orderItem.findMany({
+          where: { sellerId },
+          select: { orderId: true },
+          distinct: ["orderId"],
+        }),
+        prisma.review.findMany({
+          where: { medicine: { sellerId } },
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            medicine: { select: { id: true, name: true, images: true } },
+            user: { select: { id: true, name: true, email: true, avatar: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        }),
+        prisma.medicine.findMany({
+          where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } },
+          select: { id: true, name: true, stock: true, status: true, price: true, createdAt: true },
+          orderBy: { stock: "asc" },
+          take: 5,
+        }),
+      ]);
 
-    //  order IDs that contain seller's medicines
-    // তোমার OrderItem এ sellerId আছে, তাই relation medicine না লাগিয়েও হবে
-    const sellerOrderIdsRows = await prisma.orderItem.findMany({
-      where: { sellerId },
-      select: { orderId: true },
-      distinct: ["orderId"],
-    });
     const sellerOrderIds = sellerOrderIdsRows.map((r) => r.orderId);
 
-    // recent reviews on seller medicines (works even if no orders)
-    const recentReviews = await prisma.review.findMany({
-      where: { medicine: { sellerId } },
-      select: {
-        id: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-        medicine: { select: { id: true, name: true, images: true } },
-        user: { select: { id: true, name: true, email: true, avatar: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-
-    //  low stock list
-    const lowStockMedicines = await prisma.medicine.findMany({
-      where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } },
-      select: { id: true, name: true, stock: true, status: true, price: true, createdAt: true },
-      orderBy: { stock: "asc" },
-      take: 5,
-    });
-
-    // if no orders
     if (sellerOrderIds.length === 0) {
       return {
         medicines: { active: activeMedicines, lowStock, lowStockThreshold: LOW_STOCK_THRESHOLD },
@@ -61,56 +54,38 @@ export const sellerService = {
         recentOrders: [],
         recentReviews,
         lowStockMedicines,
-        //  revenue (optional): no orders => 0
         revenue: { today: 0, month: 0 },
       };
     }
 
-    //  order counts
-    const [todayOrders, pendingCount, processingCount] = await Promise.all([
-      prisma.order.count({ where: { id: { in: sellerOrderIds }, createdAt: { gte: dayStart } } }),
-      prisma.order.count({ where: { id: { in: sellerOrderIds }, status: "PLACED" } }),
-      prisma.order.count({ where: { id: { in: sellerOrderIds }, status: "PROCESSING" } }),
-    ]);
-
-    //  recent orders
-    const recentOrders = await prisma.order.findMany({
-      where: { id: { in: sellerOrderIds } },
-      select: {
-        id: true,
-        status: true,
-        total: true,
-        createdAt: true,
-        customer: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    //  revenue from OrderItem (seller only)
-    const [revToday, revMonth] = await Promise.all([
-      prisma.orderItem.aggregate({
-        where: { sellerId, order: { createdAt: { gte: dayStart } } },
-        _sum: { price: true, quantity: true } as any,
-      }),
-      prisma.orderItem.aggregate({
-        where: { sellerId, order: { createdAt: { gte: monthStart } } },
-        _sum: { price: true, quantity: true } as any,
-      }),
-    ]);
-
-    // since prisma can't multiply in aggregate, do it safely by fetching totals:
-    // better approach: compute via findMany reduce (fast enough for dashboard)
-    const [itemsToday, itemsMonth] = await Promise.all([
-      prisma.orderItem.findMany({
-        where: { sellerId, order: { createdAt: { gte: dayStart } } },
-        select: { price: true, quantity: true },
-      }),
-      prisma.orderItem.findMany({
-        where: { sellerId, order: { createdAt: { gte: monthStart } } },
-        select: { price: true, quantity: true },
-      }),
-    ]);
+    const [todayOrders, pendingCount, processingCount, recentOrders, itemsToday, itemsMonth] =
+      await Promise.all([
+        prisma.order.count({
+          where: { id: { in: sellerOrderIds }, createdAt: { gte: dayStart } },
+        }),
+        prisma.order.count({ where: { id: { in: sellerOrderIds }, status: "PLACED" } }),
+        prisma.order.count({ where: { id: { in: sellerOrderIds }, status: "PROCESSING" } }),
+        prisma.order.findMany({
+          where: { id: { in: sellerOrderIds } },
+          select: {
+            id: true,
+            status: true,
+            total: true,
+            createdAt: true,
+            customer: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        }),
+        prisma.orderItem.findMany({
+          where: { sellerId, order: { createdAt: { gte: dayStart } } },
+          select: { price: true, quantity: true },
+        }),
+        prisma.orderItem.findMany({
+          where: { sellerId, order: { createdAt: { gte: monthStart } } },
+          select: { price: true, quantity: true },
+        }),
+      ]);
 
     const revenueToday = itemsToday.reduce((sum, it) => sum + it.price * it.quantity, 0);
     const revenueMonth = itemsMonth.reduce((sum, it) => sum + it.price * it.quantity, 0);
@@ -123,21 +98,18 @@ export const sellerService = {
       recentReviews,
       lowStockMedicines,
     };
-
-    
   },
-getFeatured: async () => {
-  return prisma.user.findMany({
-    where: {
-      role: "SELLER",
-      isActive: true,
-      sellerLogo: { not: null },
-    },
-    select: { id: true, name: true, sellerLogo: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-    take: 12,
-  });
-},
 
+  getFeatured: async () => {
+    return prisma.user.findMany({
+      where: {
+        role: "SELLER",
+        isActive: true,
+        sellerLogo: { not: null },
+      },
+      select: { id: true, name: true, sellerLogo: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+    });
+  },
 };
-

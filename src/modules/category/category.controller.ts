@@ -34,17 +34,9 @@ const createCategory = catchAsync(async (req: any, res: Response) => {
 const getAllCategories = catchAsync(async (_req: Request, res: Response) => {
   const result = await categoryService.getAllCategories();
 
-  const formatted = result.map(c => ({
-    id: c.id,
-    name: c.name,
-    image: c.image ?? null,
-    createdAt: c.createdAt,
-    medicineCount: c.medicines.length,
-  }));
-
   sendResponse(res, {
     message: "Categories fetched successfully",
-    data: formatted,
+    data: result,
   });
 });
 
@@ -62,9 +54,6 @@ const updateCategory = catchAsync(async (req: any, res) => {
 
   if (req.body.name) payload.name = req.body.name;
   if (req.file) payload.image = publicPathFromFile(req.file);
-console.log("CT:", req.headers["content-type"]);
-console.log("BODY:", req.body);
-console.log("FILE:", req.file);
   const result = await categoryService.updateCategory(req.params.id, payload);
 
   sendResponse(res, {

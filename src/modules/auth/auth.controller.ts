@@ -6,6 +6,7 @@ import ApiError from "../../utils/apiError";
 import httpStatus from "http-status";
 import { publicPathFromFile } from "../../utils/publicPathFromFile";
 import { uploadAvatarMulter, uploadSellerLogoMulter } from "../../config/multer.config";
+import { getUserId } from "../../utils/getUserId";
 
 const register = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
@@ -64,16 +65,9 @@ const logout = catchAsync(async (_req: Request, res: Response) => {
 });
 
 const me = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
-  if (!userId) {
-    return sendResponse(res, {
-      statusCode: 401,
-      success: false,
-      message: "Unauthorized",
-    });
-  }
+  const userId = getUserId(req);
 
-  const user = await authService.getMe(userId);
+  const user = await authService.getMe(userId!);
 
   sendResponse(res, {
     message: "Me fetched successfully",
@@ -82,17 +76,9 @@ const me = catchAsync(async (req: any, res: Response) => {
 });
 
 const updateProfile = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
+  const userId = getUserId(req);
 
-  if (!userId) {
-    return sendResponse(res, {
-      statusCode: 401,
-      success: false,
-      message: "Unauthorized",
-    });
-  }
-
-  const updated = await authService.updateProfile(userId, req.body);
+  const updated = await authService.updateProfile(userId!, req.body);
 
   sendResponse(res, {
     message: "Profile updated successfully",
@@ -126,10 +112,8 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ✅ PATCH /auth/me/avatar
 const uploadAvatar = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
-  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  const userId = getUserId(req);
 
   req.uploadMeta = { area: "users", entityId: userId, filename: "avatar" };
 
@@ -138,16 +122,14 @@ const uploadAvatar = catchAsync(async (req: any, res: Response) => {
     if (!req.file) throw new ApiError(httpStatus.BAD_REQUEST, "avatar is required");
 
     const avatarPath = publicPathFromFile(req.file);
-    const updated = await authService.updateAvatar(userId, avatarPath);
+    const updated = await authService.updateAvatar(userId!, avatarPath);
 
     sendResponse(res, { message: "Avatar uploaded successfully", data: updated });
   });
 });
 
-// ✅ PATCH /auth/me/seller-logo  (logo + title)
 const uploadSellerLogo = catchAsync(async (req: any, res: Response) => {
-  const userId = req.user?.userId ?? req.user?.id;
-  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  const userId = getUserId(req);
 
   req.uploadMeta = { area: "sellers", entityId: userId, filename: "logo" };
 
@@ -158,7 +140,7 @@ const uploadSellerLogo = catchAsync(async (req: any, res: Response) => {
     const logoPath = publicPathFromFile(req.file);
     const title = (req.body?.title ?? "").toString().trim();
 
-    const updated = await authService.updateSellerLogo(userId, logoPath, title);
+    const updated = await authService.updateSellerLogo(userId!, logoPath, title);
 
     sendResponse(res, {
       message: "Seller logo uploaded successfully",
